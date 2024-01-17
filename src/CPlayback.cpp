@@ -11,7 +11,7 @@
 #include "Main.hpp"
 
 extern CServer  *pServer;
-extern CNetGame *pNetGame;
+extern CNetGameWrapper *pNetGame;
 
 CPlayback::CPlayback(char *szFile, char *szPlayingPath, bool bAutoUnload)
 {
@@ -58,7 +58,7 @@ bool CPlayback::Initialize(const CVector &vecPoint, float *fQuaternion)
 
 	m_recordData = pServer->GetRecordManager()->Get(m_iRecordId);
 
-	if (vecPoint != CVector()) {
+	if (vecPoint != CVector(0.f, 0.f, 0.f)) {
 		int iSize = static_cast<int>(m_recordData.v_dwTime.size());
 
 		if (iSize) {

@@ -11,7 +11,7 @@
 #include "Main.hpp"
 
 extern logprintf_t logprintf;
-extern CNetGame *pNetGame;
+extern CNetGameWrapper *pNetGame;
 
 CServer::CServer(eSAMPVersion version)
 {
@@ -24,7 +24,6 @@ CServer::CServer(eSAMPVersion version)
 	m_pNodeManager = NULL;
 	m_pMovePath = NULL;
 	m_pRecordManager = NULL;
-	m_pColAndreas = NULL;
 	// Initialize the update rate
 	m_dwUpdateRate = DEFAULT_UPDATE_RATE;
 	// enable crashlog by default
@@ -48,7 +47,6 @@ CServer::~CServer()
 	SAFE_DELETE(m_pNodeManager);
 	SAFE_DELETE(m_pMovePath);
 	SAFE_DELETE(m_pRecordManager);
-	SAFE_DELETE(m_pColAndreas);
 }
 
 BYTE CServer::Initialize()
@@ -72,16 +70,6 @@ BYTE CServer::Initialize()
 
 	// Create the record instance
 	m_pRecordManager = new CRecordManager;
-
-	// Create the ColAndreas instance
-	m_pColAndreas = new ColAndreasWorld;
-	collisionWorld = m_pColAndreas;
-	if (collisionWorld->loadCollisionData()) {
-		logprintf("Loaded collision data.");
-		colDataLoaded = true;
-	} else {
-		logprintf("No collision data found.");
-	}
 
 	// Check the maxnpc from the config
 	if (CFunctions::GetMaxNPC() == 0) {
@@ -127,18 +115,6 @@ CRecordManager *CServer::GetRecordManager()
 	return m_pRecordManager;
 }
 
-extern CMapAndreas MapAndreas;
-
-CMapAndreas *CServer::GetMapAndreas()
-{
-	return &MapAndreas;
-}
-
-ColAndreasWorld *CServer::GetColAndreas()
-{
-	return m_pColAndreas;
-}
-
 CMovePath *CServer::GetMovePath()
 {
 	return m_pMovePath;
@@ -180,14 +156,14 @@ bool CServer::IsValidNickName(char *szName)
 bool CServer::DoesNameExist(char *szName)
 {
 	// Loop through all the players
-	for (WORD i = 0; i <= pNetGame->pPlayerPool->dwPlayerPoolSize; i++) {
+	for (WORD i = 0; i <= pNetGame->GetPlayerPoolSize(); i++) {
 		// Ignore non connected players
-		if (!pNetGame->pPlayerPool->bIsPlayerConnected[i]) {
+		if (!pNetGame->IsPlayerConnected(i)) {
 			continue;
 		}
 
 		// Compare names
-		if (!strcmp(szName, pNetGame->pPlayerPool->szName[i])) {
+		if (!strcmp(szName, pNetGame->GetPlayerName(i))) {
 			return true;
 		}
 	}
@@ -259,18 +235,33 @@ WORD CServer::GetVehicleSeatPlayerId(WORD wVehicleId, BYTE byteSeatId)
 	CPlayer *pPlayer;
 
 	// Loop through all the players
-	for (WORD i = 0; i <= pNetGame->pPlayerPool->dwPlayerPoolSize; i++) {
+	for (WORD i = 0; i <= pNetGame->GetPlayerPoolSize(); i++) {
 		// Ignore non connected players
 		if (!pServer->GetPlayerManager()->IsPlayerConnected(i)) {
 			continue;
 		}
 
 		// Get the player interface
-		pPlayer = pNetGame->pPlayerPool->pPlayer[i];
+		pPlayer = pNetGame->GetPlayerAt(i);
 
+		WORD playerVehicleId = INVALID_VEHICLE_ID;
+		BYTE playerSeatId = 0;
+#ifndef OMP_WRAPPER
+		playerVehicleId = pPlayer->wVehicleId;
+		playerSeatId = pPlayer->byteSeatId;
+#else
+		auto vehicleData = queryExtension<IPlayerVehicleData>(pPlayer);
+		if (vehicleData) {
+			auto vehicle = vehicleData->getVehicle();
+			if (vehicle) {
+				playerVehicleId = WORD(vehicle->getID());
+			}
+			playerSeatId = BYTE(vehicleData->getSeat());
+		}
+#endif
 		// Check vehicle and seat
-		if (pPlayer->wVehicleId == wVehicleId && pPlayer->byteSeatId == byteSeatId) {
-			return pPlayer->wPlayerId;
+		if (playerVehicleId == wVehicleId && playerSeatId == byteSeatId) {
+			return pPlayer->getID();
 		}
 	}
 
@@ -281,6 +272,7 @@ float CServer::GetVehicleAngle(CVehicle *pVehicle)
 {
 	float fAngle;
 
+#ifndef OMP_WRAPPER
 	bool bIsBadMatrix = CMath::IsEqual(pVehicle->vehMatrix.up.fX, 0.0f) && CMath::IsEqual(pVehicle->vehMatrix.up.fY, 0.0f);
 	bool bIsTrain = pVehicle->customSpawn.iModelID == 537 || pVehicle->customSpawn.iModelID == 538;
 
@@ -289,32 +281,39 @@ float CServer::GetVehicleAngle(CVehicle *pVehicle)
 	} else {
 		fAngle = CMath::GetAngle(pVehicle->vehMatrix.up.fX, pVehicle->vehMatrix.up.fY);
 	}
+#else
+	fAngle = pVehicle->getZAngle();
+#endif
 
 	return fAngle;
 }
 
 CVector CServer::GetVehiclePos(CVehicle *pVehicle)
 {
+#ifndef OMP_WRAPPER
 	if (CMath::IsEqual(pVehicle->vehMatrix.up.fX, 0.0f) && CMath::IsEqual(pVehicle->vehMatrix.up.fY, 0.0f)) {
 		return pVehicle->customSpawn.vecPos;
 	}
 
 	return pVehicle->vecPosition;
+#else
+	return pVehicle->getPosition();
+#endif
 }
 
 CVector CServer::GetVehicleSeatPos(CVehicle *pVehicle, BYTE byteSeatId)
 {
 	// Get the seat position
-	CVector *pvecSeat;
+	CVector pvecSeat;
 
 	if (byteSeatId == 0 || byteSeatId == 1) {
-		pvecSeat = CFunctions::GetVehicleModelInfoEx(pVehicle->customSpawn.iModelID, VEHICLE_MODEL_INFO_FRONTSEAT);
+		pvecSeat = CFunctions::GetVehicleModelInfoEx(pVehicle, VEHICLE_MODEL_INFO_FRONTSEAT);
 	} else {
-		pvecSeat = CFunctions::GetVehicleModelInfoEx(pVehicle->customSpawn.iModelID, VEHICLE_MODEL_INFO_REARSEAT);
+		pvecSeat = CFunctions::GetVehicleModelInfoEx(pVehicle, VEHICLE_MODEL_INFO_REARSEAT);
 	}
 
 	// Adjust the seat vector
-	CVector vecSeat(pvecSeat->fX + 1.3f, pvecSeat->fY - 0.6f, pvecSeat->fZ);
+	CVector vecSeat(pvecSeat.fX + 1.3f, pvecSeat.fY - 0.6f, pvecSeat.fZ);
 
 	if (byteSeatId == 0 || byteSeatId == 2) {
 		vecSeat.fX = -vecSeat.fX;

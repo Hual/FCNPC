@@ -102,7 +102,8 @@ bool CPlayerManager::ResetPlayer(WORD wPlayerId)
 	}
 
 	// Reset player data
-	pPlayer->bReadyToSpawn = false;
+	// is this needed?
+	//pPlayer->bReadyToSpawn = false;
 	pPlayerData->SetSpawnedStatus(false);
 	return true;
 }
@@ -116,7 +117,7 @@ void CPlayerManager::ResetAllPlayers()
 
 void CPlayerManager::Process()
 {
-	if (!pNetGame->pGameModePool) {
+	if (!pNetGame->HasGameMode()) {
 		return;
 	}
 
@@ -136,19 +137,20 @@ bool CPlayerManager::IsPlayerConnected(WORD wPlayerId)
 	if (wPlayerId >= MAX_PLAYERS) {
 		return false;
 	}
-	return pNetGame->pPlayerPool->bIsPlayerConnected[wPlayerId] != 0;
+	return pNetGame->IsPlayerConnected(wPlayerId);
 }
 
 WORD CPlayerManager::GetId(char *szName)
 {
 	for (auto &id : m_vNpcID) {
-		if (!strcmp(szName, pNetGame->pPlayerPool->szName[id])) {
+		if (!strcmp(szName, pNetGame->GetPlayerName(id))) {
 			return id;
 		}
 	}
 	return INVALID_PLAYER_ID;
 }
 
+// TODO: for omp this can be done with player data extensions instead of this array
 CPlayerData *CPlayerManager::GetAt(WORD wPlayerId)
 {
 	if (!IsNpcConnected(wPlayerId)) {

@@ -10,29 +10,39 @@
 
 #include "Main.hpp"
 #include "CAddress.hpp"
-#include "vendor/MapAndreas/natives.h"
-#include "vendor/ColAndreas/Natives.h"
+
+#include <Server/Components/Pawn/pawn.hpp>
 
 // Globals
 logprintf_t  logprintf;
-void         **ppPluginData;
-extern void  *pAMXFunctions;
+extern const void  *pAMXFunctions;
 CServer      *pServer;
 bool         bServerInit = false;
 DWORD        dwStartTick;
-CNetGame     *pNetGame;
+CNetGameWrapper *pNetGame;
+#ifndef OMP_WRAPPER
+void         **ppPluginData;
+CNetGame     *pNetGameSAMP;
 #ifdef SAMP_03DL
 CArtInfo     *pArtInfo;
 #endif
 void         *pConsole = NULL;
 void         *pRakServer = NULL;
+#else
+ICore *pCore;
+IPlayerPool *pPlayerPool;
+IPawnComponent *pPawn = nullptr;
+int pMaxPlayers = 0;
+
+#endif
 char         szSampClient[64];
 char         szSampVersion[64];
 
 // ColAndreas stuff
 bool colInit = false;
 bool colDataLoaded = false;
-ColAndreasWorld *collisionWorld;
+
+#ifndef OMP_WRAPPER
 
 PLUGIN_EXPORT unsigned int PLUGIN_CALL Supports()
 {
@@ -101,20 +111,6 @@ PLUGIN_EXPORT bool PLUGIN_CALL Load(void **ppData)
 	// Create the server instance
 	pServer = new CServer(version);
 
-	// ColAndreas
-	logprintf("");
-	logprintf("-------------------------------------------------");
-	logprintf("   ColAndreas" CA_VERSION);
-	logprintf("");
-	logprintf("   Created By:");
-	logprintf("     [uL]Chris42O");
-	logprintf("     [uL]Slice");
-	logprintf("     [uL]Pottus");
-	logprintf("-------------------------------------------------");
-	logprintf("");
-	logprintf("Loading...");
-
-	logprintf("ColAndreas " CA_VERSION " Loaded.");
 	return true;
 }
 
@@ -127,6 +123,107 @@ PLUGIN_EXPORT void PLUGIN_CALL Unload()
 
 	logprintf("[FCNPC] Info: Plugin unloaded.");
 }
+
+#else
+
+struct FCNPCComponent : public INetworkComponent, CoreEventHandler, PawnEventHandler {
+	PROVIDE_UID(0x5875446ED0C4D445)
+
+public:
+	StringView componentName() const { return "FCNPC"; }
+	SemanticVersion componentVersion() const { return SemanticVersion(0, 0, 1); }
+
+	void onLoad(ICore *c) override {
+		pCore = c;
+		pPlayerPool = &pCore->getPlayers();
+		logprintf = &PluginLogprintf;
+
+		strlcpy(szSampVersion, "0.3.DL R1", sizeof(szSampVersion));
+		strlcpy(szSampClient, "open.mp", sizeof(szSampClient));
+
+		// Print the loading message
+		logprintf("");
+		logprintf("-------------------------------------------------");
+		logprintf("     FCNPC - Fully Controllable NPC v" PLUGIN_VERSION "");
+		logprintf("            " SYSTEM_NAME " %s %s", szSampClient, szSampVersion);
+		logprintf("           " __DATE__" at " __TIME__);
+		logprintf("");
+		logprintf("  Author:       OrMisicL (2013 - 2015)");
+		logprintf("  Continued by: ziggi    (2016 - present)");
+		logprintf("  open.mp version by: Hual");
+		logprintf("");
+		logprintf("  See full credits in the README.md file");
+		logprintf("-------------------------------------------------");
+		logprintf("");
+		logprintf("Loading...");
+
+		// Install the exception handler
+		CExceptionHandler::Install();
+		// Initialize linux tick count
+#if defined(LINUX)
+		LoadTickCount();
+#endif
+		// Create the server instance
+		pServer = new CServer(pCore->getVersion().major);
+
+	}
+
+	INetwork *getNetwork() override {
+		// TODO
+		return nullptr;
+	}
+
+	void onInit(IComponentList *components) override {
+		pPawn = components->queryComponent<IPawnComponent>();
+		if (!pPawn) {
+			pCore->logLn(LogLevel::Error, "No PAWN component, FCNPC can't load");
+		}
+
+		pCore->getEventDispatcher().addEventHandler(this);
+		pPawn->getEventDispatcher().addEventHandler(this);
+	}
+
+	void onReady() override {
+		pAMXFunctions = pPawn->getAmxFunctions().data();
+		pMaxPlayers = *pCore->getConfig().getInt("max_players");
+	}
+
+	void onTick(Microseconds elapsed, TimePoint now) override;
+
+	void onFree(IComponent *component) override {
+		if (component == pPawn) {
+			pPawn = nullptr;
+		}
+	}
+
+	void free() override {
+		delete this;
+	}
+
+	void reset() override {
+		pServer->GetPlayerManager()->ResetAllPlayers();
+	}
+
+	// Pawn
+	void onAmxLoad(IPawnScript &script) override;
+	void onAmxUnload(IPawnScript &script) override;
+
+	// Printing
+	static void PluginLogprintf(const char *szFormat, ...) {
+		va_list args;
+		va_start(args, szFormat);
+		pCore->vprintLn(szFormat, args);
+		va_end(args);
+	}
+};
+
+COMPONENT_ENTRY_POINT()
+{
+	return new FCNPCComponent();
+}
+
+#endif
+
 // Natives table
 AMX_NATIVE_INFO PluginNatives[] = {
 	{ "FCNPC_GetPluginVersion", CNatives::FCNPC_GetPluginVersion },
@@ -328,60 +425,32 @@ AMX_NATIVE_INFO PluginNatives[] = {
 	{ "FCNPC_SetMinHeightPosCall", CNatives::FCNPC_SetMinHeightPosCall },
 	{ "FCNPC_GetMinHeightPosCall", CNatives::FCNPC_GetMinHeightPosCall },
 
+	// nah
 	{ "FCNPC_ShowInTabListForPlayer", CNatives::FCNPC_ShowInTabListForPlayer },
 	{ "FCNPC_HideInTabListForPlayer", CNatives::FCNPC_HideInTabListForPlayer },
-
-	// Map Andreas
-	{ "MapAndreas_Init", CMapAndreasNatives::Init },
-	{ "MapAndreas_FindZ_For2DCoord", CMapAndreasNatives::FindZ_For2DCoord },
-	{ "MapAndreas_FindAverageZ", CMapAndreasNatives::FindAverageZ },
-	{ "MapAndreas_Unload", CMapAndreasNatives::Unload },
-	{ "MapAndreas_SetZ_For2DCoord", CMapAndreasNatives::SetZ_For2DCoord },
-	{ "MapAndreas_SaveCurrentHMap", CMapAndreasNatives::SaveCurrentHMap },
-	{ "MapAndreas_GetAddress", CMapAndreasNatives::GetAddress },
-
-	// ColAndreas
-	{ "CA_Init", ColAndreasNatives::CA_Init },
-	{ "CA_RayCastLine", ColAndreasNatives::CA_RayCastLine },
-	{ "CA_RayCastLineExtraID", ColAndreasNatives::CA_RayCastLineExtraID },
-	{ "CA_RayCastLineID", ColAndreasNatives::CA_RayCastLineID },
-	{ "CA_RayCastLineAngle", ColAndreasNatives::CA_RayCastLineAngle },
-	{ "CA_RayCastMultiLine", ColAndreasNatives::CA_RayCastMultiLine },
-	{ "CA_RayCastReflectionVector", ColAndreasNatives::CA_RayCastReflectionVector },
-	{ "CA_RayCastLineNormal", ColAndreasNatives::CA_RayCastLineNormal },
-	{ "CA_ContactTest", ColAndreasNatives::CA_ContactTest },
-	{ "CA_LoadFromDff", ColAndreasNatives::CA_LoadFromDff },
-	{ "CA_CreateObject", ColAndreasNatives::CA_CreateObject },
-	{ "CA_DestroyObject", ColAndreasNatives::CA_DestroyObject },
-	{ "CA_IsValidObject", ColAndreasNatives::CA_IsValidObject },
-	{ "CA_EulerToQuat", ColAndreasNatives::CA_EulerToQuat },
-	{ "CA_QuatToEuler", ColAndreasNatives::CA_QuatToEuler },
-	{ "CA_RemoveBuilding", ColAndreasNatives::CA_RemoveBuilding },
-	{ "CA_RestoreBuilding", ColAndreasNatives::CA_RestoreBuilding },
-	{ "CA_SetObjectPos", ColAndreasNatives::CA_SetObjectPos },
-	{ "CA_SetObjectRot", ColAndreasNatives::CA_SetObjectRot },
-	{ "CA_GetModelBoundingSphere", ColAndreasNatives::CA_GetModelBoundingSphere },
-	{ "CA_GetModelBoundingBox", ColAndreasNatives::CA_GetModelBoundingBox },
-	{ "CA_SetObjectExtraID", ColAndreasNatives::CA_SetObjectExtraID },
-	{ "CA_GetObjectExtraID", ColAndreasNatives::CA_GetObjectExtraID },
-	{ "CA_RayCastLineEx", ColAndreasNatives::CA_RayCastLineEx },
-	{ "CA_RayCastLineAngleEx", ColAndreasNatives::CA_RayCastLineAngleEx },
 
 	{ 0, 0 }
 };
 
+#ifndef OMP_WRAPPER
 PLUGIN_EXPORT int PLUGIN_CALL AmxLoad(AMX *pAMX)
 {
+#else
+
+void FCNPCComponent::onAmxLoad(IPawnScript &script)
+{
+	AMX *pAMX = script.GetAMX();
+#endif
 	// Check for native usage
-	AMX_HEADER* pAmxHeader = reinterpret_cast<AMX_HEADER*>(pAMX->base);
-	AMX_FUNCSTUBNT* pAmxNativeTable = reinterpret_cast<AMX_FUNCSTUBNT*>(pAMX->base + pAmxHeader->natives);
-	char* szName;
+	AMX_HEADER *pAmxHeader = reinterpret_cast<AMX_HEADER *>(pAMX->base);
+	AMX_FUNCSTUBNT *pAmxNativeTable = reinterpret_cast<AMX_FUNCSTUBNT *>(pAMX->base + pAmxHeader->natives);
+	char *szName;
 	bool bIsHaveNatives = false;
 	int iNativesCount;
 	amx_NumNatives(pAMX, &iNativesCount);
 
 	for (int i = 0; i < iNativesCount; i++) {
-		szName = reinterpret_cast<char*>(pAMX->base + pAmxNativeTable[i].nameofs);
+		szName = reinterpret_cast<char *>(pAMX->base + pAmxNativeTable[i].nameofs);
 		if (strstr(szName, "FCNPC_") != NULL) {
 			bIsHaveNatives = true;
 			break;
@@ -393,7 +462,7 @@ PLUGIN_EXPORT int PLUGIN_CALL AmxLoad(AMX *pAMX)
 		int iIncludeVersion = 0;
 		cell cellIndex;
 		if (!amx_FindPubVar(pAMX, "FCNPC_IncludeVersion", &cellIndex)) {
-			cell* pAddress = NULL;
+			cell *pAddress = NULL;
 			if (!amx_GetAddr(pAMX, cellIndex, &pAddress)) {
 				iIncludeVersion = *pAddress;
 			}
@@ -424,19 +493,86 @@ PLUGIN_EXPORT int PLUGIN_CALL AmxLoad(AMX *pAMX)
 	CCallbackManager::RegisterAMX(pAMX);
 
 	// Register the plugin natives for the amx instance
-	return amx_Register(pAMX, PluginNatives, -1);
+#ifndef OMP_WRAPPER
+	return
+#endif
+		amx_Register(pAMX, PluginNatives, -1);
 }
 
+#ifndef OMP_WRAPPER
 PLUGIN_EXPORT int PLUGIN_CALL AmxUnload(AMX *pAMX)
 {
+#else
+void FCNPCComponent::onAmxUnload(IPawnScript &script)
+{
+	AMX *pAMX = script.GetAMX();
+#endif
 	// Unregister the AMX
 	CCallbackManager::UnregisterAMX(pAMX);
+#ifndef OMP_WRAPPER
 	return AMX_ERR_NONE;
+#endif
 }
 
+#ifndef OMP_WRAPPER
 PLUGIN_EXPORT void PLUGIN_CALL ProcessTick()
+#else
+void FCNPCComponent::onTick(Microseconds elapsed, TimePoint now)
+#endif
 {
 	if (pServer) {
 		pServer->Process();
 	}
+}
+
+bool CNetGameWrapper::HasGameMode() {
+#ifndef OMP_WRAPPER
+	return pNetGameSAMP->pGameModePool != nullptr;
+#else
+	return pPawn->mainScript() != nullptr;
+#endif
+}
+
+bool CNetGameWrapper::IsPlayerConnected(WORD wPlayerId) {
+#ifndef OMP_WRAPPER
+	return pNetGameSAMP->pPlayerPool->bIsPlayerConnected[wPlayerId] != 0
+#else
+	return pPlayerPool->get(wPlayerId) != nullptr;
+#endif
+}
+
+const char *CNetGameWrapper::GetPlayerName(WORD wPlayerId) {
+#ifndef OMP_WRAPPER
+	return pNetGameSAMP->pPlayerPool->szName[id];
+#else
+	IPlayer *player = pPlayerPool->get(wPlayerId);
+	if (!player) { return ""; }
+	return player->getName().data();
+#endif
+}
+
+DWORD CNetGameWrapper::GetPlayerPoolSize() {
+#ifndef OMP_WRAPPER
+	return pNetGameSAMP->pPlayerPool->dwPlayerPoolSize;
+#else
+	return pMaxPlayers;
+#endif
+}
+
+CPlayer *CNetGameWrapper::GetPlayerAt(WORD wPlayerId) {
+#ifndef OMP_WRAPPER
+	return pNetGameSAMP->pPlayerPool->pPlayer[wPlayerId];
+#else
+	return pPlayerPool->get(wPlayerId);
+#endif
+}
+
+CVector CNetGameWrapper::GetPlayerPos(WORD wPlayerId) {
+#ifndef OMP_WRAPPER
+	return pNetGameSAMP->pPlayerPool->pPlayer[wPlayerId]->vecPosition;
+#else
+	IPlayer *player = pPlayerPool->get(wPlayerId);
+	if (!player) { return CVector(0.f, 0.f, 0.f); }
+	return player->getPosition();
+#endif
 }

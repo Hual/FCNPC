@@ -80,6 +80,7 @@ long WINAPI CExceptionHandler::ExceptionHandlerCallback(_EXCEPTION_POINTERS *pEx
 	fprintf(pFile, "  %s: %s\n", szSampClient, szSampVersion);
 	fprintf(pFile, "  FCNPC: %s\n", PLUGIN_VERSION);
 
+#ifndef OMP_WRAPPER
 	fprintf(pFile, "\nFunctions:\n");
 	fprintf(pFile, "  FUNC_CPlayerPool__DeletePlayer: 0x%x\n", CAddress::FUNC_CPlayerPool__DeletePlayer);
 	fprintf(pFile, "  FUNC_CPlayer__Kill: 0x%x\n", CAddress::FUNC_CPlayer__Kill);
@@ -107,6 +108,7 @@ long WINAPI CExceptionHandler::ExceptionHandlerCallback(_EXCEPTION_POINTERS *pEx
 	fprintf(pFile, "  FUNC_CGameMode__OnPlayerStreamIn: 0x%x\n", CAddress::FUNC_CGameMode__OnPlayerStreamIn);
 	fprintf(pFile, "  FUNC_CGameMode__OnPlayerStreamOut: 0x%x\n", CAddress::FUNC_CGameMode__OnPlayerStreamOut);
 	fprintf(pFile, "  FUNC_CGameMode__OnGameModeExit: 0x%x\n", CAddress::FUNC_CGameMode__OnGameModeExit);
+#endif
 	fprintf(pFile, "=========================== FCNPC Exception Handler ============================");
 	// Close the file
 	fclose(pFile);

@@ -12,6 +12,7 @@
 #ifndef SAMPFUNCTIONS_H
 #define SAMPFUNCTIONS_H
 
+#ifndef OMP_WRAPPER
 struct Packet;
 struct PlayerId;
 
@@ -31,6 +32,7 @@ typedef PlayerID(THISCALL *RakNet__GetPlayerIDFromIndex_t)(void* ppRakServer, in
 typedef int (THISCALL *RakNet__GetIndexFromPlayerID_t)(void* ppRakServer, PlayerID playerId);
 
 typedef CVector *( *GetVehicleModelInfo_t)(int iModelID, int iInfoType);
+#endif
 
 class CFunctions
 {
@@ -45,7 +47,7 @@ public:
 	static void KillPlayer(CPlayer *pPlayer, BYTE byteReason, WORD wKillerId);
 	static void PlayerEnterVehicle(CPlayer *pPlayer, WORD wVehicleId, BYTE byteSeatId);
 	static void PlayerExitVehicle(CPlayer *pPlayer, WORD wVehicleId);
-	static CVector *GetVehicleModelInfoEx(int iModelID, int iInfoType);
+	static CVector GetVehicleModelInfoEx(CVehicle* pVehicle, int iInfoType);
 	static WORD GetMaxPlayers();
 	static WORD GetMaxNPC();
 
@@ -61,14 +63,17 @@ public:
 	static void GlobalPacket(RakNet::BitStream* bsParams);
 	static void PlayerPacket(RakNet::BitStream* bsParams, WORD wPlayerId);
 
+#ifndef OMP_WRAPPER
 	static PlayerID GetPlayerIDFromIndex(int index);
 	static int GetIndexFromPlayerID(PlayerID playerId);
+#endif
 
 	static void PlayerShoot(WORD wPlayerId, WORD wHitId, BYTE byteHitType, BYTE byteWeaponId, const CVector &vecPoint, const CVector &vecOffsetFrom, bool bIsHit, int iMode, BYTE byteBetweenCheckFlags);
 	static WORD GetClosestEntityInBetween(const CVector &vecHitOrigin, const CVector &vecHitTarget, float fRange, int iMode, BYTE byteBetweenCheckFlags, WORD wPlayerId, WORD wTargetId, BYTE &byteEntityType, WORD &wPlayerObjectOwnerId, CVector &vecHitMap);
 
 	static int32_t RayCastLine(const CVector &vecStart, const CVector &vecEnd, CVector *vecResult);
 
+#ifndef OMP_WRAPPER
 	// Functions
 	static ClientJoin_RPC_t                 pfn__ClientJoin_RPC;
 	static CPlayerPool__DeletePlayer_t      pfn__CPlayerPool__DeletePlayer;
@@ -83,6 +88,7 @@ public:
 	static RakNet__Receive_t                pfn__RakNet__Receive;
 	static RakNet__GetPlayerIDFromIndex_t   pfn__RakNet__GetPlayerIDFromIndex;
 	static RakNet__GetIndexFromPlayerID_t   pfn__RakNet__GetIndexFromPlayerID;
+#endif
 
 private:
 	static WORD GetClosestPlayerInBetween(const CVector &vecHitOrigin, const CVector &vecHitTarget, float fRange, float &fDistance, WORD wPlayerId, WORD wTargetId);

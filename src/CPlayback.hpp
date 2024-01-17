@@ -12,6 +12,7 @@
 #define PLAYBACK_H
 
 #include "Structs.h"
+#include "CRecordManager.hpp"
 
 class CPlayerData;
 

@@ -33,14 +33,10 @@
 #ifndef YSF_STRUCTS_H
 #define YSF_STRUCTS_H
 
-#include "CServer.hpp"
 #include "CVector.h"
 #include "CVector2D.h"
 #include <map>
-
-#include <raknet/BitStream.h>
-#include <raknet/NetworkTypes.h>
-#include <sdk/amx/amx.h>
+#include <amx/amx.h>
 
 #if !defined PAD
 #define PAD(a, b) char a[b]
@@ -204,6 +200,10 @@
 #define GAMESTATE_RUNNING			1
 #define GAMESTATE_RESTARTING		2
 /* -------------------------------------------------------- */
+
+#ifndef OMP_WRAPPER
+#include <raknet/BitStream.h>
+#include <raknet/NetworkTypes.h>
 
 // Server rules special
 enum CON_VARTYPE { CON_VARTYPE_FLOAT, CON_VARTYPE_INT, CON_VARTYPE_BOOL, CON_VARTYPE_STRING };
@@ -1103,5 +1103,41 @@ static_assert(sizeof(CArtInfo) == 269, "Invalid CArtInfo size");
 #endif
 
 #pragma pack(pop)
+
+#define VEHICLE_MODEL_ID(vehicle) (vehicle->customSpawn.iModelID)
+
+#else
+
+#include <bitstream.hpp>
+#include <player.hpp>
+#include <Server/Components/Vehicles/vehicles.hpp>
+#include <Server/Components/Actors/actors.hpp>
+#include <Server/Components/Objects/objects.hpp>
+
+using CPlayer = IPlayer;
+using CVehicle = IVehicle;
+using CActor = IActor;
+using CObject = IObject;
+using MATRIX4X4 = glm::mat4;
+using eSAMPVersion = uint8_t;
+//#define right operator[](0)
+//#define up operator[](1)
+//#define at operator[](2)
+//#define pos operator[](3)
+namespace RakNet {
+	using BitStream = ::NetworkBitStream;
+}
+#define VEHICLE_MODEL_ID(vehicle) (vehicle->getModel())
+
+#endif
+
+struct CNetGameWrapper {
+	bool HasGameMode();
+	bool IsPlayerConnected(WORD wPlayerId);
+	const char *GetPlayerName(WORD wPlayerId);
+	DWORD GetPlayerPoolSize();
+	CPlayer *GetPlayerAt(WORD wPlayerId);
+	CVector GetPlayerPos(WORD wPlayerId);
+};
 
 #endif

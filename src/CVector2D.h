@@ -12,6 +12,7 @@
 #ifndef __CVector2D_H
 #define __CVector2D_H
 
+#ifndef OMP_WRAPPER
 #define FLOAT_EPSILON 0.0001f
 
 #include <math.h>
@@ -180,5 +181,9 @@ public:
 			(fabs(fY - param.fY) >= FLOAT_EPSILON));
 	}
 };
+
+#else
+using CVector2D = Vector2;
+#endif
 
 #endif

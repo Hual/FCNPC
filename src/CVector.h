@@ -12,6 +12,7 @@
 #ifndef __CVector_H
 #define __CVector_H
 
+#ifndef OMP_WRAPPER
 #include <math.h>
 
 #define FLOAT_EPSILON 0.0001f
@@ -227,6 +228,13 @@ public:
 		         ( fabs ( fZ - param.fZ ) >= FLOAT_EPSILON ) );
 	}
 };
+
+#else
+using CVector = Vector3;
+#define fX x
+#define fY y
+#define fZ z
+#endif
 
 // global vector normals
 CVector const g_vecFrontNormal ( 1.0f, 0.0f, 0.0f );

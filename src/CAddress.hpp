@@ -12,6 +12,8 @@
 #ifndef ADDRESS_H
 #define ADDRESS_H
 
+#ifndef OMP_WRAPPER
+
 #if defined(WIN32)
 	#define RAKNET_SEND_OFFSET          7
 	#define RAKNET_RPC_OFFSET           32
@@ -31,12 +33,17 @@ enum eSAMPVersion {
 	SAMP_VERSION_037_R2,
 	CRMP_VERSION_037_R2,
 	SAMP_VERSION_03DL_R1,
+	OMP
 };
+
+#endif
 
 class CAddress
 {
 public:
 	static void	Initialize(eSAMPVersion sampVersion);
+
+#ifndef OMP_WRAPPER
 	static DWORD FindNetVersion();
 
 	static DWORD           FUNC_Logprintf_037_R2;
@@ -72,6 +79,7 @@ public:
 	static DWORD           FUNC_CGameMode__OnPlayerStreamIn;
 	static DWORD           FUNC_CGameMode__OnPlayerStreamOut;
 	static DWORD           FUNC_CGameMode__OnGameModeExit;
+#endif
 };
 
 #endif

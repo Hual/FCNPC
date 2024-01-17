@@ -10,6 +10,9 @@
 
 
 #include "Main.hpp"
+#include <Server/Components/Vehicles/vehicle_models.hpp>
+
+#ifndef OMP_WRAPPER
 
 // Functions
 CPlayerPool__DeletePlayer_t     CFunctions::pfn__CPlayerPool__DeletePlayer = NULL;
@@ -27,8 +30,12 @@ RakNet__Receive_t               CFunctions::pfn__RakNet__Receive = NULL;
 RakNet__GetPlayerIDFromIndex_t  CFunctions::pfn__RakNet__GetPlayerIDFromIndex = NULL;
 RakNet__GetIndexFromPlayerID_t  CFunctions::pfn__RakNet__GetIndexFromPlayerID = NULL;
 
+#endif
+
 void CFunctions::Initialize()
 {
+#ifndef OMP_WRAPPER
+
 #ifdef SAMP_03DL
 	pArtInfo = *reinterpret_cast<CArtInfo**>(CAddress::VAR_ArtInfo);
 #endif
@@ -42,12 +49,14 @@ void CFunctions::Initialize()
 	pfn__GetVehicleModelInfo = (GetVehicleModelInfo_t)(CAddress::FUNC_GetVehicleModelInfo);
 	pfn__CConsole__GetIntVariable = (CConsole__GetIntVariable_t)(CAddress::FUNC_CConsole__GetIntVariable);
 	pfn__ClientJoin_RPC = (ClientJoin_RPC_t)(CAddress::FUNC_ClientJoin_RPC);
+#endif
 }
 
 void CFunctions::PreInitialize()
 {
+#ifndef OMP_WRAPPER
 	int(*pfn_GetNetGame)(void) = reinterpret_cast<int(*)(void)>(ppPluginData[PLUGIN_DATA_NETGAME]);
-	pNetGame = reinterpret_cast<CNetGame*>(pfn_GetNetGame());
+	pNetGameSAMP = reinterpret_cast<CNetGame*>(pfn_GetNetGame());
 
 	int(*pfn__GetConsole)(void) = reinterpret_cast<int(*)(void)>(ppPluginData[PLUGIN_DATA_CONSOLE]);
 	pConsole = reinterpret_cast<void*>(pfn__GetConsole());
@@ -68,8 +77,10 @@ void CFunctions::PreInitialize()
 	pfn__RakNet__Receive = reinterpret_cast<RakNet__Receive_t>(pRakServer_VTBL[RAKNET_RECEIVE_OFFSET]);
 	pfn__RakNet__GetPlayerIDFromIndex = reinterpret_cast<RakNet__GetPlayerIDFromIndex_t>(pRakServer_VTBL[RAKNET_GET_PLAYERID_FROM_INDEX_OFFSET]);
 	pfn__RakNet__GetIndexFromPlayerID = reinterpret_cast<RakNet__GetIndexFromPlayerID_t>(pRakServer_VTBL[RAKNET_GET_INDEX_FROM_PLAYERID_OFFSET]);
+#endif
 }
 
+#ifndef OMP_WRAPPER
 WORD CFunctions::GetFreePlayerSlot()
 {
 	// Loop through all the players
@@ -82,9 +93,11 @@ WORD CFunctions::GetFreePlayerSlot()
 	}
 	return INVALID_PLAYER_ID;
 }
+#endif
 
 WORD CFunctions::NewPlayer(char *szName)
 {
+#ifndef OMP_WRAPPER
 	// Get a free player slot
 	WORD wPlayerId = GetFreePlayerSlot();
 	if (wPlayerId == INVALID_PLAYER_ID) {
@@ -118,51 +131,92 @@ WORD CFunctions::NewPlayer(char *szName)
 
 	// Return the player id
 	return wPlayerId;
+#else
+
+#endif
 }
 
 void CFunctions::DeletePlayer(WORD wPlayerId)
 {
+#ifndef OMP_WRAPPER
 	pfn__CPlayerPool__DeletePlayer(pNetGame->pPlayerPool, wPlayerId, 0);
+#else
+
+#endif
 }
 
 void CFunctions::SpawnPlayer(CPlayer *pPlayer)
 {
+#ifndef OMP_WRAPPER
 	pfn__CPlayer__SpawnForWorld(pPlayer);
+#else
+
+#endif
 }
 
 void CFunctions::KillPlayer(CPlayer *pPlayer, BYTE byteReason, WORD wKillerId)
 {
+#ifndef OMP_WRAPPER
 	pfn__CPlayer__Kill(pPlayer, byteReason, wKillerId);
+#else
+
+#endif
 }
 
 void CFunctions::PlayerEnterVehicle(CPlayer *pPlayer, WORD wVehicleId, BYTE byteSeatId)
 {
+#ifndef OMP_WRAPPER
 	pfn__CPlayer__EnterVehicle(pPlayer, wVehicleId, byteSeatId);
+#else
+
+#endif
 }
 
 void CFunctions::PlayerExitVehicle(CPlayer *pPlayer, WORD wVehicleId)
 {
+#ifndef OMP_WRAPPER
 	pfn__CPlayer__ExitVehicle(pPlayer, wVehicleId);
+#else
+
+#endif
 }
 
-CVector *CFunctions::GetVehicleModelInfoEx(int iModelID, int iInfoType)
+CVector CFunctions::GetVehicleModelInfoEx(CVehicle* pVehicle, int iInfoType)
 {
-	return pfn__GetVehicleModelInfo(iModelID, iInfoType);
+#ifndef OMP_WRAPPER
+	return *pfn__GetVehicleModelInfo(pVehicle->customSpawn.iModelID, iInfoType);
+#else
+	CVector res;
+	if (Impl::getVehicleModelInfo(pVehicle->getModel(), VehicleModelInfoType(iInfoType), res)) {
+		return res;
+	}
+	else {
+		return CVector(0.f, 0.f, 0.f);
+	}
+#endif
 }
 
 WORD CFunctions::GetMaxPlayers()
 {
+#ifndef OMP_WRAPPER
 	return static_cast<WORD>(pfn__CConsole__GetIntVariable(pConsole, "maxplayers"));
+#else
+#endif
 }
 
 WORD CFunctions::GetMaxNPC()
 {
+#ifndef OMP_WRAPPER
 	return static_cast<WORD>(pfn__CConsole__GetIntVariable(pConsole, "maxnpc"));
+#else
+
+#endif
 }
 
 #ifdef SAMP_03DL
 int CFunctions::GetSkinBaseID(DWORD dwSkinId)
 {
+#ifndef OMP_WRAPPER
 	if (pArtInfo->artList.dwCapacity == 0) {
 		return -1;
 	}
@@ -174,11 +228,15 @@ int CFunctions::GetSkinBaseID(DWORD dwSkinId)
 	}
 
 	return -1;
+#else
+
+#endif
 }
 #endif
 
 void CFunctions::GlobalRPC(int* szUniqueID, RakNet::BitStream* bsParams, WORD wExcludePlayerId, char PacketStream)
 {
+#ifndef OMP_WRAPPER
 	PacketReliability reliable = RELIABLE_ORDERED;
 
 	if (PacketStream == 3) {
@@ -190,11 +248,14 @@ void CFunctions::GlobalRPC(int* szUniqueID, RakNet::BitStream* bsParams, WORD wE
 	} else {
 		pfn__RakNet__RPC(pRakServer, szUniqueID, bsParams, HIGH_PRIORITY, reliable, PacketStream, GetPlayerIDFromIndex(wExcludePlayerId), true, false);
 	}
+#else
 
+#endif
 }
 
 void CFunctions::AddedPlayersRPC(int* szUniqueID, RakNet::BitStream* bsParams, WORD wPlayerId, char PacketStream)
 {
+#ifndef OMP_WRAPPER
 	CPlayer *pPlayer;
 
 	for (WORD i = 0; i <= pNetGame->pPlayerPool->dwPlayerPoolSize; i++) {
@@ -206,10 +267,14 @@ void CFunctions::AddedPlayersRPC(int* szUniqueID, RakNet::BitStream* bsParams, W
 			}
 		}
 	}
+#else
+
+#endif
 }
 
 void CFunctions::AddedVehicleRPC(int* szUniqueID, RakNet::BitStream* bsParams, WORD wVehicleId, WORD wExcludePlayerId, char PacketStream)
 {
+#ifndef OMP_WRAPPER
 	CPlayer *pPlayer;
 
 	for (WORD i = 0; i <= pNetGame->pPlayerPool->dwPlayerPoolSize; i++) {
@@ -221,10 +286,14 @@ void CFunctions::AddedVehicleRPC(int* szUniqueID, RakNet::BitStream* bsParams, W
 			}
 		}
 	}
+#else
+
+#endif
 }
 
 void CFunctions::PlayerRPC(int* szUniqueID, RakNet::BitStream* bsParams, WORD wPlayerId, char PacketStream)
 {
+#ifndef OMP_WRAPPER
 	PacketReliability reliable = RELIABLE_ORDERED;
 
 	if (PacketStream == 2) {
@@ -232,18 +301,30 @@ void CFunctions::PlayerRPC(int* szUniqueID, RakNet::BitStream* bsParams, WORD wP
 	}
 
 	pfn__RakNet__RPC(pRakServer, szUniqueID, bsParams, HIGH_PRIORITY, reliable, PacketStream, GetPlayerIDFromIndex(wPlayerId), false, false);
+#else
+
+#endif
 }
 
 void CFunctions::GlobalPacket(RakNet::BitStream* bsParams)
 {
+#ifndef OMP_WRAPPER
 	pfn__RakNet__Send(pRakServer, bsParams, HIGH_PRIORITY, UNRELIABLE_SEQUENCED, 1, UNASSIGNED_PLAYER_ID, true);
+#else
+
+#endif
 }
 
 void CFunctions::PlayerPacket(RakNet::BitStream* bsParams, WORD wPlayerId)
 {
+#ifndef OMP_WRAPPER
 	pfn__RakNet__Send(pRakServer, bsParams, HIGH_PRIORITY, UNRELIABLE_SEQUENCED, 1, GetPlayerIDFromIndex(wPlayerId), false);
+#else
+
+#endif
 }
 
+#ifndef OMP_WRAPPER
 PlayerID CFunctions::GetPlayerIDFromIndex(int index)
 {
 	return pfn__RakNet__GetPlayerIDFromIndex(pRakServer, index);
@@ -253,6 +334,7 @@ int CFunctions::GetIndexFromPlayerID(PlayerID playerId)
 {
 	return pfn__RakNet__GetIndexFromPlayerID(pRakServer, playerId);
 }
+#endif
 
 void CFunctions::PlayerShoot(WORD wPlayerId, WORD wHitId, BYTE byteHitType, BYTE byteWeaponId, const CVector &vecPoint, const CVector &vecOffsetFrom, bool bIsHit, int iMode, BYTE byteBetweenCheckFlags)
 {
@@ -347,7 +429,7 @@ void CFunctions::PlayerShoot(WORD wPlayerId, WORD wHitId, BYTE byteHitType, BYTE
 				bulletSyncDataTarget.vecCenterOfHit = vecHitMap; // When map is hit use the object collision position, this is conform with the SA-MP callback OnPlayerWeaponShot
 			} else { // Hit nothing
 				// logprintf("HIT NOTHING");
-				bulletSyncDataTarget.vecCenterOfHit = CVector(); // When nothing is hit use 0.0, this is conform with the SA-MP callback OnPlayerWeaponShot
+				bulletSyncDataTarget.vecCenterOfHit = CVector(0.f, 0.f, 0.f); // When nothing is hit use 0.0, this is conform with the SA-MP callback OnPlayerWeaponShot
 			}
 			break;
 		case BULLET_HIT_TYPE_PLAYER:

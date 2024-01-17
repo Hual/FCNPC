@@ -10,7 +10,6 @@
 
 // OS includes
 #if defined(WIN32)
-	#include <windows.h>
 	#include <snprintf/snprintf.h>
 
 	#pragma warning(disable : 4201 4206 4127 4100 4305 4127)
@@ -51,10 +50,8 @@
 #include <btBulletDynamicsCommon.h>
 // Library includes
 #include <sdk/plugin.h>
-#include <raknet/BitStream.h>
-#include "vendor/MapAndreas/MapAndreas.h"
-#include "vendor/ColAndreas/DynamicWorld.h"
-#include <subhook/subhook.h>
+#include <sdk.hpp>
+#include <bitstream.hpp>
 #include <strlcpy/strlcpy.h>
 // ExceptionHandler includes
 #include "CExceptionHandler.hpp"
@@ -93,13 +90,16 @@
 
 // externals
 extern CServer      *pServer;
+extern CNetGameWrapper     *pNetGame;
+#ifndef OMP_WRAPPER
+extern CNetGame     *pNetGameSAMP;
 extern void         **ppPluginData;
-extern CNetGame     *pNetGame;
 #ifdef SAMP_03DL
 extern CArtInfo     *pArtInfo;
 #endif
 extern void         *pConsole;
 extern void         *pRakServer;
+#endif
 extern char         szSampVersion[64];
 extern char         szSampClient[64];
 

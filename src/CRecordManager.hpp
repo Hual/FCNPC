@@ -11,6 +11,7 @@
 #ifndef RECORDMANAGER_H
 #define RECORDMANAGER_H
 
+#ifndef OMP_WRAPPER
 struct Record_t
 {
 	char szFile[MAX_PATH];
@@ -19,6 +20,9 @@ struct Record_t
 	std::vector<CSyncData> v_playerSyncData;
 	std::vector<CVehicleSyncData> v_vehicleSyncData;
 };
+#else
+using Record_t = int;
+#endif
 
 class CRecordManager
 {

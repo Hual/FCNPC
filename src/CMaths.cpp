@@ -11,6 +11,11 @@
 #include "Main.hpp"
 #include "CUtils.hpp"
 
+#define right operator[](0)
+#define up operator[](1)
+#define at operator[](2)
+#define pos operator[](3)
+
 float CMath::GetDistanceBetween3DPoints(const CVector &vecPosition, const CVector &_vecPosition)
 {
 	// Get the distance between the two vectors

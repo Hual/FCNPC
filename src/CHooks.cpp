@@ -13,6 +13,10 @@ FCNPC - Fully Controllable NPC
 extern CServer      *pServer;
 extern logprintf_t  logprintf;
 
+// TODO: convert this to omp event handlers
+
+#ifndef OMP_WRAPPER
+
 subhook_t CGameMode__OnPlayerGiveDamage_hook;
 subhook_t CGameMode__OnPlayerTakeDamage_hook;
 subhook_t CGameMode__OnPlayerWeaponShot_hook;
@@ -153,7 +157,7 @@ int __attribute__((__cdecl__)) HOOK_CGameMode__OnPlayerStreamOut(CGameMode *this
 }
 
 //----------------------------------------------------
-
+// TODO: move Component::reset() here
 typedef int(THISCALL* FUNC_CGameMode__OnGameModeExit)(CGameMode *thisptr);
 #ifdef _WIN32
 int FASTCALL HOOK_CGameMode__OnGameModeExit(CGameMode *thisptr, void *padding)
@@ -192,3 +196,7 @@ void CHooks::InstallHooks()
 	CGameMode__OnGameModeExit_hook = subhook_new(reinterpret_cast<void*>(CAddress::FUNC_CGameMode__OnGameModeExit), reinterpret_cast<void*>(HOOK_CGameMode__OnGameModeExit), static_cast<subhook_flags_t>(NULL));
 	subhook_install(CGameMode__OnGameModeExit_hook);
 }
+
+#else
+// TODO: event handling
+#endif

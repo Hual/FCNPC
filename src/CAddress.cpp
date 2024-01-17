@@ -11,6 +11,8 @@
 
 #include "Main.hpp"
 
+#ifndef OMP_WRAPPER
+
 #if defined(WIN32)
 DWORD CAddress::FUNC_Logprintf_037_R2 = 0x0048C8D0;
 DWORD CAddress::FUNC_Logprintf_03DL_R1 = 0x00491fa0;
@@ -352,3 +354,5 @@ DWORD CAddress::FindNetVersion()
 	return *(DWORD *)(dwAddress + 7);
 #endif
 }
+
+#endif

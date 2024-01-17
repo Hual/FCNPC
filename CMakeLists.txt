@@ -1,8 +1,4 @@
-cmake_minimum_required (VERSION 2.8.12)
-
-if (CMAKE_VERSION VERSION_GREATER 3.1.3)
-	cmake_policy(SET CMP0054 NEW)
-endif ()
+cmake_minimum_required (VERSION 3.5)
 
 project (FCNPC)
 
@@ -19,13 +15,7 @@ set (CMAKE_MINSIZEREL_POSTFIX "")
 set (LIBRARY_GROUP "lib\\")
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-	add_definitions (-DWINDOWS_IGNORE_PACKING_MISMATCH -DWIN32 -D_WIN32 -D__STDC__ -DSYSTEM_NAME="Windows")
-
-	# check if it is being generated for Win32 arch
-	if(NOT CMAKE_GENERATOR_PLATFORM STREQUAL "Win32")
-            message(FATAL_ERROR "Please enforce x86 ARCH with \"-A Win32\" flag.\n\texample: \"cmake .. -A Win32\"")
-        endif()
-
+	add_definitions (-DWIN32 -D_WIN32 -D__STDC__ -DSYSTEM_NAME="Windows")
 
 	# *.def
 	file (GLOB EXPORTS_SRC
@@ -45,8 +35,8 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
 
 	# flags
 	set (USE_MSVC_RUNTIME_LIBRARY_DLL true)
-	set (CMAKE_C_FLAGS "/Zp1 /W4")
-	set (CMAKE_CXX_FLAGS "/Zp1 /W4 /EHsc")
+	set (CMAKE_C_FLAGS "/W4")
+	set (CMAKE_CXX_FLAGS "/W4 /EHsc")
 
 	set (CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /MT")
 	set (CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /MTd")
@@ -77,6 +67,14 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
 	set (CMAKE_SHARED_LINKER_FLAGS "-fshort-wchar -shared -static-libgcc -static-libstdc++")
 endif ()
 
+# open.mp
+add_subdirectory (
+	${CMAKE_CURRENT_SOURCE_DIR}/lib/open.mp-sdk
+)
+add_subdirectory (
+	${CMAKE_CURRENT_SOURCE_DIR}/lib/open.mp-network
+)
+
 # Bullet
 set (BUILD_CPU_DEMOS OFF CACHE BOOL "Build original Bullet CPU examples")
 set (BUILD_BULLET2_DEMOS OFF CACHE BOOL "Set when you want to build the Bullet 2 demos")
@@ -97,18 +95,11 @@ find_path(BULLET_INCLUDE_DIRS NAMES btBulletCollisionCommon.h
 
 # include (FindBullet)
 
-# subhook
-set (SUBHOOK_STATIC true)
-set (SUBHOOK_TESTS false)
-add_subdirectory (
-	${CMAKE_CURRENT_SOURCE_DIR}/lib/subhook
-)
-
 # FCNPC
 include_directories (
 	${CMAKE_CURRENT_SOURCE_DIR}/src
 	${CMAKE_CURRENT_SOURCE_DIR}/lib
-	${CMAKE_CURRENT_SOURCE_DIR}/lib/sdk/amx
+	${CMAKE_CURRENT_SOURCE_DIR}/lib/sdk
 	${BULLET_INCLUDE_DIRS}
 )
 
@@ -120,29 +111,12 @@ file (GLOB FCNPC_SRC
 )
 source_group("" FILES ${FCNPC_SRC})
 
-# MapAndreas
-file (GLOB MAPANDREAS_SRC
-	${CMAKE_CURRENT_SOURCE_DIR}/src/vendor/MapAndreas/*.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/vendor/MapAndreas/*.h
-)
-source_group("${VENDOR_GROUP}MapAndreas" FILES ${MAPANDREAS_SRC})
-
-# ColAndreas
-set (CA_VERSION "v1.4.0")
-set (CA_DATABASE_VERSION 2)
-add_definitions (-DCA_VERSION="${CA_VERSION}" -DCA_DATABASE_VERSION=${CA_DATABASE_VERSION})
-file (GLOB COLANDREAS_SRC
-	${CMAKE_CURRENT_SOURCE_DIR}/src/vendor/ColAndreas/*.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/src/vendor/ColAndreas/*.h
-)
-source_group("${VENDOR_GROUP}ColAndreas" FILES ${COLANDREAS_SRC})
-
 # SDK
 file (GLOB SDK_SRC
-	${CMAKE_CURRENT_SOURCE_DIR}/lib/sdk/*.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/lib/sdk/*.h
-	${CMAKE_CURRENT_SOURCE_DIR}/lib/sdk/amx/*.c
-	${CMAKE_CURRENT_SOURCE_DIR}/lib/sdk/amx/*.h
+       ${CMAKE_CURRENT_SOURCE_DIR}/lib/sdk/*.cpp
+       ${CMAKE_CURRENT_SOURCE_DIR}/lib/sdk/*.h
+       ${CMAKE_CURRENT_SOURCE_DIR}/lib/sdk/amx/*.c
+       ${CMAKE_CURRENT_SOURCE_DIR}/lib/sdk/amx/*.h
 )
 source_group("${LIBRARY_GROUP}SDK" FILES ${SDK_SRC})
 
@@ -153,49 +127,20 @@ file (GLOB STRLCPY_SRC
 )
 source_group("${LIBRARY_GROUP}strlcpy" FILES ${STRLCPY_SRC})
 
-# RakNet
-file (GLOB RAKNET_SRC
-	${CMAKE_CURRENT_SOURCE_DIR}/lib/raknet/*.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/lib/raknet/*.h
-)
-source_group("${LIBRARY_GROUP}RakNet" FILES ${RAKNET_SRC})
-
 # Include file
 configure_file(src/FCNPC.inc.in ${CMAKE_CURRENT_SOURCE_DIR}/sampsvr_files/FCNPC.inc NEWLINE_STYLE CRLF)
 
-# Library
-add_library (${PROJECT_NAME} SHARED ${FCNPC_SRC}
-                                    ${MAPANDREAS_SRC}
-                                    ${COLANDREAS_SRC}
-                                    ${EXPORTS_SRC}
-                                    ${SDK_SRC}
-                                    ${STRLCPY_SRC}
-                                    ${RAKNET_SRC}
-                                    ${PLATFORM_SRC})
-
-target_link_libraries (${PROJECT_NAME}
-	subhook
-	BulletInverseDynamics
-	BulletSoftBody
-	BulletDynamics
-	BulletCollision
-	LinearMath
-	Bullet3Common
-	)
-
 # SAMP03DL
 add_library (${PROJECT_NAME}-DL SHARED ${FCNPC_SRC}
-                                       ${MAPANDREAS_SRC}
-                                       ${COLANDREAS_SRC}
                                        ${EXPORTS_DL_SRC}
-                                       ${SDK_SRC}
                                        ${STRLCPY_SRC}
-                                       ${RAKNET_SRC}
                                        ${PLATFORM_SRC})
-set_target_properties (${PROJECT_NAME}-DL PROPERTIES COMPILE_FLAGS -DSAMP_03DL)
+target_compile_definitions(${PROJECT_NAME}-DL PRIVATE -DSAMP_03DL -DOMP_WRAPPER)
 
 target_link_libraries (${PROJECT_NAME}-DL
-	subhook
+	OMP-SDK
+	OMP-NetCode
+
 	BulletInverseDynamics
 	BulletSoftBody
 	BulletDynamics

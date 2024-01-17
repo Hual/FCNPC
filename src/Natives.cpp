@@ -11,7 +11,7 @@
 #include "Main.hpp"
 
 extern CServer     *pServer;
-extern CNetGame    *pNetGame;
+extern CNetGameWrapper    *pNetGame;
 
 // native FCNPC_Create(const name[]);
 cell AMX_NATIVE_CALL CNatives::FCNPC_Create(AMX *amx, cell *params)
@@ -177,7 +177,7 @@ cell AMX_NATIVE_CALL CNatives::FCNPC_IsStreamedInForAnyone(AMX *amx, cell *param
 		return 0;
 	}
 
-	for (WORD i = 0; i <= pNetGame->pPlayerPool->dwPlayerPoolSize; i++) {
+	for (WORD i = 0; i <= pNetGame->GetPlayerPoolSize(); i++) {
 		// Ignore non connected players and the same player
 		if (!pServer->GetPlayerManager()->IsPlayerConnected(i) || wNpcId == i) {
 			continue;
@@ -390,7 +390,7 @@ cell AMX_NATIVE_CALL CNatives::FCNPC_SetAngleToPlayer(AMX *amx, cell *params)
 	}
 
 	// Set the player angle
-	CVector vecPlayerPos = pNetGame->pPlayerPool->pPlayer[wPlayerId]->vecPosition;
+	CVector vecPlayerPos = pNetGame->GetPlayerPos(wPlayerId);
 
 	CVector vecPos;
 	pPlayerData->GetPosition(&vecPos);
@@ -2626,7 +2626,7 @@ cell AMX_NATIVE_CALL CNatives::FCNPC_SetVehicleHydraThrusters(AMX *amx, cell *pa
 
 	// Make sure the vehicle is a hydra
 	CVehicle *pVehicle = pPlayerData->GetVehicle();
-	if (!pVehicle || !CVehicleInfo::IsAHydra(static_cast<WORD>(pVehicle->customSpawn.iModelID))) {
+	if (!pVehicle || !CVehicleInfo::IsAHydra(static_cast<WORD>(VEHICLE_MODEL_ID(pVehicle)))) {
 		return 0;
 	}
 
@@ -2656,7 +2656,7 @@ cell AMX_NATIVE_CALL CNatives::FCNPC_GetVehicleHydraThrusters(AMX *amx, cell *pa
 
 	// Make sure the vehicle is a hydra
 	CVehicle *pVehicle = pPlayerData->GetVehicle();
-	if (!pVehicle || !CVehicleInfo::IsAHydra(static_cast<WORD>(pVehicle->customSpawn.iModelID))) {
+	if (!pVehicle || !CVehicleInfo::IsAHydra(static_cast<WORD>(VEHICLE_MODEL_ID(pVehicle)))) {
 		return 0;
 	}
 
@@ -2686,7 +2686,7 @@ cell AMX_NATIVE_CALL CNatives::FCNPC_SetVehicleGearState(AMX *amx, cell *params)
 
 	// Make sure the vehicle is a plane
 	CVehicle *pVehicle = pPlayerData->GetVehicle();
-	if (!pVehicle || !CVehicleInfo::IsAPlane(static_cast<WORD>(pVehicle->customSpawn.iModelID))) {
+	if (!pVehicle || !CVehicleInfo::IsAPlane(static_cast<WORD>(VEHICLE_MODEL_ID(pVehicle)))) {
 		return 0;
 	}
 
@@ -2716,7 +2716,7 @@ cell AMX_NATIVE_CALL CNatives::FCNPC_GetVehicleGearState(AMX *amx, cell *params)
 
 	// Make sure the vehicle is a plane
 	CVehicle *pVehicle = pPlayerData->GetVehicle();
-	if (!pVehicle || !CVehicleInfo::IsAPlane(static_cast<WORD>(pVehicle->customSpawn.iModelID))) {
+	if (!pVehicle || !CVehicleInfo::IsAPlane(static_cast<WORD>(VEHICLE_MODEL_ID(pVehicle)))) {
 		return 0;
 	}
 
@@ -2746,7 +2746,7 @@ cell AMX_NATIVE_CALL CNatives::FCNPC_SetVehicleTrainSpeed(AMX *amx, cell *params
 
 	// Make sure the vehicle is a train
 	CVehicle *pVehicle = pPlayerData->GetVehicle();
-	if (!pVehicle || !CVehicleInfo::IsATrainPart(static_cast<WORD>(pVehicle->customSpawn.iModelID))) {
+	if (!pVehicle || !CVehicleInfo::IsATrainPart(static_cast<WORD>(VEHICLE_MODEL_ID(pVehicle)))) {
 		return 0;
 	}
 
@@ -2777,7 +2777,7 @@ cell AMX_NATIVE_CALL CNatives::FCNPC_GetVehicleTrainSpeed(AMX *amx, cell *params
 
 	// Make sure the vehicle is a train
 	CVehicle *pVehicle = pPlayerData->GetVehicle();
-	if (!pVehicle || !CVehicleInfo::IsATrainPart(static_cast<WORD>(pVehicle->customSpawn.iModelID))) {
+	if (!pVehicle || !CVehicleInfo::IsATrainPart(static_cast<WORD>(VEHICLE_MODEL_ID(pVehicle)))) {
 		return amx_ftoc(fSpeed);
 	}
 

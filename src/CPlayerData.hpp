@@ -20,8 +20,6 @@
 #include <stdio.h>
 
 class CPlayback;
-struct CPlayer;
-struct CVehicle;
 struct CSyncData;
 struct CVehicleSyncData;
 struct CBulletSyncData;

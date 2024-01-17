@@ -8,15 +8,17 @@
 
   =========================================*/
 
-
+#include "CPlayerData.hpp"
 #include "Main.hpp"
 
-struct CPlayer;
-
 extern CServer  *pServer;
-extern CNetGame *pNetGame;
+extern CNetGameWrapper *pNetGame;
+#ifndef OMP_WRAPPER
 #ifdef SAMP_03DL
 extern CArtInfo *pArtInfo;
+#else
+
+#endif
 #endif
 
 CPlayerData::CPlayerData(WORD playerId, char *szName)
@@ -26,10 +28,10 @@ CPlayerData::CPlayerData(WORD playerId, char *szName)
 	// Save player name
 	SetName(szName);
 	// Reset variables
-	m_vecDestination = CVector();
-	m_vecAimAt = CVector();
-	m_vecAimOffset = CVector();
-	m_vecAimOffsetFrom = CVector();
+	m_vecDestination = CVector(0.f, 0.f, 0.f);
+	m_vecAimAt = CVector(0.f, 0.f, 0.f);
+	m_vecAimOffset = CVector(0.f, 0.f, 0.f);
+	m_vecAimOffsetFrom = CVector(0.f, 0.f, 0.f);
 	m_bSetup = false;
 	m_bSpawned = false;
 	m_bMoving = false;
@@ -61,7 +63,7 @@ CPlayerData::CPlayerData(WORD playerId, char *szName)
 	m_byteHitType = BULLET_HIT_TYPE_NONE;
 	m_iBetweenCheckMode = ENTITY_MODE_NONE;
 	m_byteBetweenCheckFlags = ENTITY_CHECK_NONE;
-	m_vecSurfing = CVector();
+	m_vecSurfing = CVector(0.f, 0.f, 0.f);
 	m_wSurfingInfo = 0;
 	m_pWeaponInfo = new CWeaponInfo();
 	m_wMoveId = INVALID_PLAYER_ID;
@@ -80,8 +82,8 @@ CPlayerData::CPlayerData(WORD playerId, char *szName)
 	m_fNodeMoveRadius = 0.0f;
 	m_bNodeMoveSetAngle = false;
 	m_fNodeMoveSpeed = MOVE_SPEED_AUTO;
-	m_vecNodeLastPos = CVector();
-	m_vecMovePlayerPosition = CVector();
+	m_vecNodeLastPos = CVector(0.f, 0.f, 0.f);
+	m_vecMovePlayerPosition = CVector(0.f, 0.f, 0.f);
 	m_fDistCheck = 0.0f;
 	m_wHydraThrustAngle[0] =
 	m_wHydraThrustAngle[1] = 5000;
@@ -145,7 +147,7 @@ bool CPlayerData::Setup()
 	}
 
 	// Get the player interface
-	m_pPlayer = pNetGame->pPlayerPool->pPlayer[m_wPlayerId];
+	m_pPlayer = pNetGame->GetPlayerAt(m_wPlayerId);
 	// Validate the interface
 	if (!m_pPlayer) {
 		return false;
@@ -155,8 +157,8 @@ bool CPlayerData::Setup()
 	m_bSetup = true;
 
 	// Reset his data
-	SetState(PLAYER_STATE_NONE);
-	m_pPlayer->spawn.byteTeam = NO_TEAM;
+	//SetState(PLAYER_STATE_NONE);
+	//m_pPlayer->spawn.byteTeam = NO_TEAM;
 
 	// Initialize the update tick
 	m_dwUpdateTick = GetTickCount();
@@ -1737,7 +1739,7 @@ void CPlayerData::UpdateMovingData(CVector vecDestination, float fRadius, bool b
 
 	float fDistance = CMath::GetDistanceBetween3DPoints(vecPosition, vecDestination);
 
-	CVector vecFront = CVector();
+	CVector vecFront = CVector(0.f, 0.f, 0.f);
 	if (!CMath::IsEqual(fDistance, 0.0f)) {
 		vecFront = (vecDestination - vecPosition) / fDistance;
 	}
@@ -2570,7 +2572,7 @@ void CPlayerData::StopPlayingNode()
 	m_fNodeMoveRadius = 0.0f;
 	m_bNodeMoveSetAngle = true;
 	m_fNodeMoveSpeed = MOVE_SPEED_AUTO;
-	m_vecNodeLastPos = CVector();
+	m_vecNodeLastPos = CVector(0.f, 0.f, 0.f);
 	// Call the node finish callback
 	CCallbackManager::OnFinishNode(m_wPlayerId, wNodeId);
 }

@@ -11,6 +11,8 @@
 #ifndef SAMPRAKPEER_H
 #define SAMPRAKPEER_H
 
+#if 0
+
 class CSAMPSystemAddress;
 
 #if defined(WIN32)
@@ -61,5 +63,7 @@ public:
 
 };
 #pragma pack(pop)
+
+#endif
 
 #endif
